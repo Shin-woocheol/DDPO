@@ -8,9 +8,13 @@ This is an implementation of [Denoising Diffusion Policy Optimization (DDPO)](ht
 Requires Python 3.10 or newer.
 
 ```bash
-git clone git@github.com:kvablack/ddpo-pytorch.git
-cd ddpo-pytorch
-pip install -e . # setup.py 안의 package안의 폴더를 현재 .py파일의 위치 상관없이 from import 할 수 있게 해줌.
+# git clone git@github.com:kvablack/ddpo-pytorch.git
+# cd ddpo-pytorch
+# pip install -e . # setup.py 안의 package안의 폴더를 현재 .py파일의 위치 상관없이 from import 할 수 있게 해줌.
+
+conda create -n sqdf python=3.10
+conda activate sqdf
+pip install -r requirements.txt
 ```
 
 ## Usage
@@ -42,7 +46,7 @@ The image at the top of this README was generated using LoRA! However, I did use
 
 You can find the exact configs I used for the 4 experiments in `config/dgx.py`. For example, to run the aesthetic quality experiment:
 ```bash
-CUDA_VISIBLE_DEVICES=2,3 accelerate launch --main_process_port 29511 scripts/train.py --config config/dgx.py:aesthetic_2
+CUDA_VISIBLE_DEVICES=2 accelerate launch --main_process_port 29511 scripts/train.py --config config/dgx.py:aesthetic_debug
 
 ```
 

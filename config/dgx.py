@@ -46,28 +46,17 @@ def incompressibility():
 
 def aesthetic():
     config = compressibility()
-    config.num_epochs = 200
-    config.reward_fn = "aesthetic_score"
-
-    # this reward is a bit harder to optimize, so I used 2 gradient updates per epoch.
-    config.train.gradient_accumulation_steps = 4
-
-    config.prompt_fn = "simple_animals"
-    config.per_prompt_stat_tracking = {
-        "buffer_size": 32,
-        "min_count": 16,
-    }
-    return config
-
-
-def aesthetic_2():
-    config = compressibility()
     config.num_epochs = 500
     config.reward_fn = "aesthetic_score"
 
     # this reward is a bit harder to optimize, so I used 2 gradient updates per epoch.
+    #* CUDA_VISIBLE_DEVICES GPU 갯수 *  batch_size * gradient_accumulation_steps = 64가 되도록 설정.
+    #* accumulation이 줄어들수록 빨라짐.
     config.train.batch_size = 2
     config.train.gradient_accumulation_steps = 16
+
+    #* seed 0, 1, 2로 실험
+    config.seed = 0
 
     config.prompt_fn = "simple_animals"
     config.per_prompt_stat_tracking = {
@@ -82,9 +71,9 @@ def aesthetic_debug():
     config.reward_fn = "aesthetic_score"
 
     # this reward is a bit harder to optimize, so I used 2 gradient updates per epoch.
-    config.train.batch_size = 2
+    config.train.batch_size = 1
     config.train.gradient_accumulation_steps = 1
-    config.sample.batch_size = 2
+    config.sample.batch_size = 1
     config.sample.num_batches_per_epoch = 1
 
     config.prompt_fn = "simple_animals"
