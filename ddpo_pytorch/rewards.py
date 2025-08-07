@@ -20,7 +20,8 @@ def jpeg_incompressibility():
 
 
 def jpeg_compressibility():
-    jpeg_fn = jpeg_incompressibility()
+    #* 함수 return을 통해서, incompressibility함수를 그대로 사용하면서 -reward로만 해줌.
+    jpeg_fn = jpeg_incompressibility() #* 이렇게 function을 init할수도 잇네. function을 return하니까.
 
     def _fn(images, prompts, metadata):
         rew, meta = jpeg_fn(images, prompts, metadata)

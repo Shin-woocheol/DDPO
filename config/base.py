@@ -8,7 +8,7 @@ def get_config():
     # run name for wandb logging and checkpoint saving -- if not provided, will be auto-generated based on the datetime.
     config.run_name = ""
     # random seed for reproducibility.
-    config.seed = 42
+    config.seed = 0
     # top-level logging directory for checkpoint saving.
     config.logdir = "logs"
     # number of epochs to train for. each epoch is one round of sampling from the model followed by training on those
@@ -36,13 +36,15 @@ def get_config():
     config.pretrained = pretrained = ml_collections.ConfigDict()
     # base model to load. either a path to a local directory, or a model name from the HuggingFace model hub.
     pretrained.model = "runwayml/stable-diffusion-v1-5"
+    #* stable diffusion의 경우에는 classifier free guidance를 사용
+    #* 그래서 guidance scale, eta등 존재.
     # revision of the model to load.
     pretrained.revision = "main"
 
     ###### Sampling ######
     config.sample = sample = ml_collections.ConfigDict()
     # number of sampler inference steps.
-    sample.num_steps = 50
+    sample.num_steps = 50 #* diffusion step 설정
     # eta parameter for the DDIM sampler. this controls the amount of noise injected into the sampling process, with 0.0
     # being fully deterministic and 1.0 being equivalent to the DDPM sampler.
     sample.eta = 1.0
@@ -87,7 +89,7 @@ def get_config():
     train.clip_range = 1e-4
     # the fraction of timesteps to train on. if set to less than 1.0, the model will be trained on a subset of the
     # timesteps for each sample. this will speed up training but reduce the accuracy of policy gradient estimates.
-    train.timestep_fraction = 1.0
+    train.timestep_fraction = 1.0 #* 모델 전 step학습시킬지에 대한 비율이네. 
 
     ###### Prompt Function ######
     # prompt function to use. see `prompts.py` for available prompt functions.
@@ -109,5 +111,9 @@ def get_config():
     # the minimum number of reward values to store in the buffer before using the per-prompt mean and std. if the buffer
     # contains fewer than `min_count` values, the mean and std of the entire batch will be used instead.
     config.per_prompt_stat_tracking.min_count = 16
+
+
+    ###### Evaluation ######
+    config.save_img_freq = 10
 
     return config

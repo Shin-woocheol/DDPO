@@ -8,11 +8,11 @@ base = imp.load_source("base", os.path.join(os.path.dirname(__file__), "base.py"
 def compressibility():
     config = base.get_config()
 
-    config.pretrained.model = "CompVis/stable-diffusion-v1-4"
+    config.pretrained.model = "runwayml/stable-diffusion-v1-5"
 
     config.num_epochs = 100
     config.use_lora = True
-    config.save_freq = 1
+    config.save_freq = 10
     config.num_checkpoint_limit = 100000000
 
     # the DGX machine I used had 8 GPUs, so this corresponds to 8 * 8 * 4 = 256 samples per epoch.
@@ -59,6 +59,40 @@ def aesthetic():
     }
     return config
 
+
+def aesthetic_2():
+    config = compressibility()
+    config.num_epochs = 500
+    config.reward_fn = "aesthetic_score"
+
+    # this reward is a bit harder to optimize, so I used 2 gradient updates per epoch.
+    config.train.batch_size = 2
+    config.train.gradient_accumulation_steps = 16
+
+    config.prompt_fn = "simple_animals"
+    config.per_prompt_stat_tracking = {
+        "buffer_size": 32,
+        "min_count": 16,
+    }
+    return config
+
+def aesthetic_debug():
+    config = compressibility()
+    config.num_epochs = 200
+    config.reward_fn = "aesthetic_score"
+
+    # this reward is a bit harder to optimize, so I used 2 gradient updates per epoch.
+    config.train.batch_size = 2
+    config.train.gradient_accumulation_steps = 1
+    config.sample.batch_size = 2
+    config.sample.num_batches_per_epoch = 1
+
+    config.prompt_fn = "simple_animals"
+    config.per_prompt_stat_tracking = {
+        "buffer_size": 32,
+        "min_count": 16,
+    }
+    return config
 
 def prompt_image_alignment():
     config = compressibility()

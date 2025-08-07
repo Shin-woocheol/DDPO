@@ -212,7 +212,7 @@ def pipeline_with_logprob(
                 )
 
             # compute the previous noisy sample x_t -> x_t-1
-            latents, log_prob = ddim_step_with_logprob(
+            latents, log_prob = ddim_step_with_logprob( #* latent가 의미하는게 각 x_t에서의 이미지 latent네. latent diffusion model이라고 했으니까.
                 self.scheduler, noise_pred, t, latents, **extra_step_kwargs
             )
 

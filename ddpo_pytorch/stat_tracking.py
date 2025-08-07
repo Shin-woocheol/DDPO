@@ -6,20 +6,21 @@ class PerPromptStatTracker:
     def __init__(self, buffer_size, min_count):
         self.buffer_size = buffer_size
         self.min_count = min_count
-        self.stats = {}
+        self.stats = {} #* 각 prompt를 key로 해서 value에는 reward들 deque.
 
     def update(self, prompts, rewards):
         prompts = np.array(prompts)
         rewards = np.array(rewards)
-        unique = np.unique(prompts)
+        unique = np.unique(prompts) #* 받은 prompts들 중 unique하게 만듦
         advantages = np.empty_like(rewards)
         for prompt in unique:
-            prompt_rewards = rewards[prompts == prompt]
+            prompt_rewards = rewards[prompts == prompt] #* prompt와 같은 것만 index로 뽑아옴.
             if prompt not in self.stats:
                 self.stats[prompt] = deque(maxlen=self.buffer_size)
             self.stats[prompt].extend(prompt_rewards)
 
-            if len(self.stats[prompt]) < self.min_count:
+            #* 각 prompt의 reward가 충분하지 않으면, 통계가 불안정하므로, 전체 reward로 standardization.
+            if len(self.stats[prompt]) < self.min_count: 
                 mean = np.mean(rewards)
                 std = np.std(rewards) + 1e-6
             else:

@@ -10,12 +10,12 @@ Requires Python 3.10 or newer.
 ```bash
 git clone git@github.com:kvablack/ddpo-pytorch.git
 cd ddpo-pytorch
-pip install -e .
+pip install -e . # setup.py 안의 package안의 폴더를 현재 .py파일의 위치 상관없이 from import 할 수 있게 해줌.
 ```
 
 ## Usage
 ```bash
-accelerate launch scripts/train.py
+accelerate launch scripts/train.py # train.py에서 설정된대로 자동으로 GPU 병렬화가 이루어짐.
 ```
 This will immediately start finetuning Stable Diffusion v1.5 for compressibility on all available GPUs using the config from `config/base.py`. It should work as long as each GPU has at least 10GB of memory. If you don't want to log into wandb, you can run `wandb disabled` before the above command.
 
@@ -42,7 +42,8 @@ The image at the top of this README was generated using LoRA! However, I did use
 
 You can find the exact configs I used for the 4 experiments in `config/dgx.py`. For example, to run the aesthetic quality experiment:
 ```bash
-accelerate launch scripts/train.py --config config/dgx.py:aesthetic
+CUDA_VISIBLE_DEVICES=2,3 accelerate launch --main_process_port 29511 scripts/train.py --config config/dgx.py:aesthetic_2
+
 ```
 
 If you want to run the LLaVA prompt-image alignment experiments, you need to dedicate a few GPUs to running LLaVA inference using [this repo](https://github.com/kvablack/LLaVA-server/).
