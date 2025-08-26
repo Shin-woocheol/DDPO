@@ -70,3 +70,9 @@ def counting(nouns_file, low, high):
         ],
     }
     return prompt, metadata
+
+def hps_v2_all(return_all=False):
+    return from_file("hps_v2_all.txt", return_all=return_all)
+
+def hps_v2_all_eval(return_all=False):
+    return from_file("hps_v2_all_eval.txt", return_all=return_all)

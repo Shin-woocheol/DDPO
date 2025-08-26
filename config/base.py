@@ -94,6 +94,7 @@ def get_config():
     ###### Prompt Function ######
     # prompt function to use. see `prompts.py` for available prompt functions.
     config.prompt_fn = "imagenet_animals"
+    config.eval_prompt_fn = "imagenet_animals"
     # kwargs to pass to the prompt function.
     config.prompt_fn_kwargs = {}
 
@@ -115,5 +116,6 @@ def get_config():
 
     ###### Evaluation ######
     config.save_img_freq = 10
+    config.use_eval_prompts = False
 
     return config

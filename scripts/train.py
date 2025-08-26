@@ -242,6 +242,8 @@ def main(_):
 
     # prepare prompt and reward fn
     prompt_fn = getattr(ddpo_pytorch.prompts, config.prompt_fn)
+    if config.use_eval_prompts:
+        eval_prompt_fn = getattr(ddpo_pytorch.prompts, config.eval_prompt_fn)
     reward_fn = getattr(ddpo_pytorch.rewards, config.reward_fn)() #* reward function 실행시, 함수 return으로 설정되어잇어서 실행한 것.
 
     # generate negative prompt embeddings
@@ -613,19 +615,25 @@ def main(_):
                             if global_step % config.save_img_freq == 0:
                                 eval_save_dir = f"eval/{now}/epoch{global_step}"
                                 os.makedirs(eval_save_dir, exist_ok=True)
-
-                                if config.prompt_fn == "simple_animals":
+                                if config.use_eval_prompts:
+                                    eval_prompts_all = eval_prompt_fn(return_all=True)[0]
+                                else:
                                     eval_prompts_all = prompt_fn(return_all=True)[0]
 
                                 num_repeats = 32 // accelerator.num_processes
                                 eval_rewards = []
 
+                                # Fix the random seed for reproducibility
+                                torch.manual_seed(config.seed + accelerator.process_index)
+                                if torch.cuda.is_available():
+                                    torch.cuda.manual_seed_all(config.seed + accelerator.process_index)
+
                                 for i in range(num_repeats):
-                                    seed = config.seed + accelerator.process_index + i * accelerator.num_processes
-                                    print(f"[Rank: {accelerator.process_index}, Seed: {seed}]")
-                                    torch.manual_seed(seed)
-                                    if torch.cuda.is_available():
-                                        torch.cuda.manual_seed_all(seed)
+                                    # seed = config.seed + accelerator.process_index + i * accelerator.num_processes
+                                    # print(f"[Rank: {accelerator.process_index}, Seed: {seed}]")
+                                    # torch.manual_seed(seed)
+                                    # if torch.cuda.is_available():
+                                    #     torch.cuda.manual_seed_all(seed)
                                     # eval_prompts_all = eval_prompts_all[:3]
                                     for i in tqdm(range(0, len(eval_prompts_all), config.train.batch_size)):
                                         batch_prompts = eval_prompts_all[i:i + config.train.batch_size]

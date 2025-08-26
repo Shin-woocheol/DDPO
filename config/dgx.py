@@ -113,6 +113,55 @@ def prompt_image_alignment():
 
     return config
 
+def hps():
+    config = compressibility()
+
+    config.num_epochs = 500
+    # for this experiment, I reserved 2 GPUs for LLaVA inference so only 6 could be used for DDPO. the total number of
+    # samples per epoch is 8 * 6 * 6 = 288.
+    #* batch size는 같게 해주고, num batches를 gradient accumualtion의 배수로 늘려주면 됨. 
+    config.sample.batch_size = 4
+    config.sample.num_batches_per_epoch = 32
+
+    # again, this one is harder to optimize, so I used (8 * 6) / (4 * 6) = 2 gradient updates per epoch.
+    # 만약 GPU 2개 사용한다면, 
+    config.train.batch_size = 4
+    config.train.gradient_accumulation_steps = 32
+
+    # prompting
+    config.prompt_fn = "hps_v2_all"
+    config.eval_prompt_fn = "hps_v2_all_eval"
+    # rewards
+    config.reward_fn = "hps"
+
+    config.seed = 0
+    config.use_eval_prompts = True
+
+    config.save_img_freq = 40
+
+    config.per_prompt_stat_tracking = {
+        "buffer_size": 32,
+        "min_count": 16,
+    }
+
+    return config
+
+'''
+아래 제약이 main 에 있음.
+    samples_per_epoch = (
+        config.sample.batch_size #* 한 GPU가 생성할 이미지 갯수
+        * accelerator.num_processes #* GPU 수
+        * config.sample.num_batches_per_epoch #* 한 epoch에 몇번 sampling반복할지
+    )
+    total_train_batch_size = (
+        config.train.batch_size #* 한 GPU가 한번에 학습할 이미지 갯수
+        * accelerator.num_processes #* GPU 수
+        * config.train.gradient_accumulation_steps #* gradient를 몇번 누적할지지
+    )
+    assert config.sample.batch_size >= config.train.batch_size
+    assert config.sample.batch_size % config.train.batch_size == 0
+    assert samples_per_epoch % total_train_batch_size == 0
+'''
 
 def get_config(name):
     return globals()[name]()
