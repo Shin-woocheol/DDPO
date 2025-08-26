@@ -156,7 +156,7 @@ def main(_):
 
             #* diffuser의 attention-layer용 LoRA 삽입모듈. attention weights들에 대해서 W = W + alpha AB같은 구조 삽입.
             lora_attn_procs[name] = LoRAAttnProcessor( 
-                hidden_size=hidden_size, cross_attention_dim=cross_attention_dim
+                hidden_size=hidden_size, cross_attention_dim=cross_attention_dim, rank=config.lora_rank
             )
         pipeline.unet.set_attn_processor(lora_attn_procs) 
         #* corssattention class내에 processor를 LoRAattention processor로 바꾼 것임.

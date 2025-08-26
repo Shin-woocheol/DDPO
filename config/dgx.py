@@ -128,6 +128,8 @@ def hps():
     config.train.batch_size = 4
     config.train.gradient_accumulation_steps = 32
 
+    config.lora_rank = 32
+
     # prompting
     config.prompt_fn = "hps_v2_all"
     config.eval_prompt_fn = "hps_v2_all_eval"
