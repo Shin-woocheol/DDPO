@@ -18,6 +18,7 @@ import ddpo_pytorch.rewards
 from ddpo_pytorch.stat_tracking import PerPromptStatTracker #* pip install -e . 해주니까 이렇게 상대경로 상관없이 from해서 쓰네.
 from ddpo_pytorch.diffusers_patch.pipeline_with_logprob import pipeline_with_logprob
 from ddpo_pytorch.diffusers_patch.ddim_with_logprob import ddim_step_with_logprob
+from ddpo_pytorch.diffusers_patch.ddim_with_logprob_kl import ddim_step_with_logprob_kl
 import torch
 import wandb
 from functools import partial
@@ -101,6 +102,13 @@ def main(_):
     pipeline = StableDiffusionPipeline.from_pretrained(
         config.pretrained.model, revision=config.pretrained.revision
     )
+    ##
+    import copy
+    ref_unet = copy.deepcopy(pipeline.unet)
+    pipeline.ref_unet = ref_unet
+    pipeline.ref_unet.requires_grad_(False)
+    pipeline.ref_unet.eval()
+    ##
     # freeze parameters of models to save more memory
     #! stable diffusion이 아닌 다른 model사용하면 아래 no grad해주는 부분 수정해야할듯.
     pipeline.vae.requires_grad_(False) #* stable diffusion은 latent diffusion이어서서
@@ -129,6 +137,10 @@ def main(_):
         inference_dtype = torch.bfloat16
 
     # Move unet, vae and text_encoder to device and cast to inference_dtype
+    ##
+    pipeline.ref_unet.to(accelerator.device, dtype=inference_dtype)
+    ##
+
     pipeline.vae.to(accelerator.device, dtype=inference_dtype)
     pipeline.text_encoder.to(accelerator.device, dtype=inference_dtype)
     if config.use_lora:
@@ -549,16 +561,35 @@ def main(_):
                                     + config.sample.guidance_scale
                                     * (noise_pred_text - noise_pred_uncond)
                                 )
+                                ## noise prediction for KL divergence
+                                noise_pred_kl = pipeline.ref_unet(
+                                    torch.cat([sample["latents"][:, j]] * 2),
+                                    torch.cat([sample["timesteps"][:, j]] * 2),
+                                    embeds,
+                                ).sample
+                                noise_pred_kl_uncond, noise_pred_kl_text = noise_pred_kl.chunk(2)
+                                noise_pred_kl = (
+                                    noise_pred_kl_uncond
+                                    + config.sample.guidance_scale
+                                    * (noise_pred_kl_text - noise_pred_kl_uncond)
+                                )
                             else:
                                 noise_pred = unet(
                                     sample["latents"][:, j],
                                     sample["timesteps"][:, j],
                                     embeds,
                                 ).sample
+                                ## noise prediction for KL divergence
+                                noise_pred_kl = pipeline.ref_unet(
+                                    sample["latents"][:, j],
+                                    sample["timesteps"][:, j],
+                                    embeds,
+                                ).sample
                             # compute the log prob of next_latents given latents under the current model #* like PPO loss
-                            _, log_prob = ddim_step_with_logprob(
+                            _, log_prob, kl_terms = ddim_step_with_logprob_kl(
                                 pipeline.scheduler,
-                                noise_pred,
+                                noise_pred, 
+                                noise_pred_kl,
                                 sample["timesteps"][:, j],
                                 sample["latents"][:, j],
                                 eta=config.sample.eta,
@@ -571,7 +602,11 @@ def main(_):
                             -config.train.adv_clip_max,
                             config.train.adv_clip_max,
                         )
-                        print(f"log_prob: {log_prob.shape}, sample['log_probs'][:, j]: {sample['log_probs'][:, j].shape}")
+                        
+                        # add kl loss to advantages
+                        advantages = advantages - config.kl_weight * kl_terms
+
+                        #print(f"log_prob: {log_prob.shape}, sample['log_probs'][:, j]: {sample['log_probs'][:, j].shape}")
                         ratio = torch.exp(log_prob - sample["log_probs"][:, j]) #* current / previous
                         unclipped_loss = -advantages * ratio
                         clipped_loss = -advantages * torch.clamp(
@@ -638,14 +673,14 @@ def main(_):
                                 if torch.cuda.is_available():
                                     torch.cuda.manual_seed_all(config.seed + accelerator.process_index)
 
-                                for n in range(num_repeats):
+                                for i in range(num_repeats):
                                     # seed = config.seed + accelerator.process_index + i * accelerator.num_processes
                                     # print(f"[Rank: {accelerator.process_index}, Seed: {seed}]")
                                     # torch.manual_seed(seed)
                                     # if torch.cuda.is_available():
                                     #     torch.cuda.manual_seed_all(seed)
                                     # eval_prompts_all = eval_prompts_all[:3]
-                                    for i in tqdm(range(0, len(eval_prompts_all), config.train.batch_size)):
+                                    for n in tqdm(range(0, len(eval_prompts_all), config.train.batch_size)):
                                         num = accelerator.process_index * num_repeats + n
                                         batch_prompts = eval_prompts_all[i:i + config.train.batch_size]
                                         batch_prompts_metadata = {}

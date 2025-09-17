@@ -36,14 +36,16 @@ def _get_variance(self, timestep, prev_timestep):
     return variance
 
 
-def ddim_step_with_logprob(
+def ddim_step_with_logprob_kl(
     self: DDIMScheduler,
     model_output: torch.FloatTensor,
+    ref_model_output: torch.FloatTensor,
     timestep: int,
     sample: torch.FloatTensor,
     eta: float = 0.0,
     use_clipped_model_output: bool = False,
     generator=None,
+    variance_noise: Optional[torch.FloatTensor] = None,
     prev_sample: Optional[torch.FloatTensor] = None,
 ) -> Union[DDIMSchedulerOutput, Tuple]:
     """
@@ -113,10 +115,10 @@ def ddim_step_with_logprob(
     # 3. compute predicted original sample from predicted noise also called
     # "predicted x_0" of formula (12) from https://arxiv.org/pdf/2010.02502.pdf
     if self.config.prediction_type == "epsilon":
-        pred_original_sample = (
-            sample - beta_prod_t ** (0.5) * model_output
-        ) / alpha_prod_t ** (0.5)
+        pred_original_sample = (sample - beta_prod_t ** (0.5) * model_output) / alpha_prod_t ** (0.5)
         pred_epsilon = model_output
+        ref_pred_original_sample = (sample - beta_prod_t ** (0.5) * ref_model_output) / alpha_prod_t ** (0.5)
+        ref_pred_epsilon = ref_model_output
     elif self.config.prediction_type == "sample":
         pred_original_sample = model_output
         pred_epsilon = (
@@ -138,8 +140,12 @@ def ddim_step_with_logprob(
     # 4. Clip or threshold "predicted x_0"
     if self.config.thresholding:
         pred_original_sample = self._threshold_sample(pred_original_sample)
+        ref_pred_original_sample = self._threshold_sample(ref_pred_original_sample)
     elif self.config.clip_sample:
         pred_original_sample = pred_original_sample.clamp(
+            -self.config.clip_sample_range, self.config.clip_sample_range
+        )
+        ref_pred_original_sample = ref_pred_original_sample.clamp(
             -self.config.clip_sample_range, self.config.clip_sample_range
         )
 
@@ -154,15 +160,22 @@ def ddim_step_with_logprob(
         pred_epsilon = (
             sample - alpha_prod_t ** (0.5) * pred_original_sample
         ) / beta_prod_t ** (0.5)
+        ref_pred_epsilon = (
+            sample - alpha_prod_t ** (0.5) * ref_pred_original_sample
+        ) / beta_prod_t ** (0.5)
 
     # 6. compute "direction pointing to x_t" of formula (12) from https://arxiv.org/pdf/2010.02502.pdf
     pred_sample_direction = (1 - alpha_prod_t_prev - std_dev_t**2) ** (
         0.5
     ) * pred_epsilon
+    ref_pred_direction = (1 - alpha_prod_t_prev - std_dev_t**2) ** (0.5) * ref_pred_epsilon
 
     # 7. compute x_t without "random noise" of formula (12) from https://arxiv.org/pdf/2010.02502.pdf
     prev_sample_mean = (
         alpha_prod_t_prev ** (0.5) * pred_original_sample + pred_sample_direction
+    )
+    ref_prev_sample_mean = (
+        alpha_prod_t_prev ** (0.5) * ref_pred_original_sample + ref_pred_direction
     )
 
     if prev_sample is not None and generator is not None:
@@ -171,6 +184,25 @@ def ddim_step_with_logprob(
             " `prev_sample` stays `None`."
         )
 
+    if eta > 0:
+        if variance_noise is not None and generator is not None:
+                raise ValueError(
+                    "Cannot pass both generator and variance_noise. Please make sure that either `generator` or"
+                    " `variance_noise` stays `None`."
+                )
+
+        if variance_noise is None:
+            variance_noise = randn_tensor(
+                model_output.shape, generator=generator, device=model_output.device, dtype=model_output.dtype
+            )
+        variance = std_dev_t * variance_noise
+        
+        prev_sample = prev_sample_mean + variance # (batch_size, 4, 64, 64)
+
+        kl_terms = (prev_sample_mean - ref_prev_sample_mean)**2 / (2 * (std_dev_t**2))
+        # mean along all but batch dimension
+        kl_terms = kl_terms.mean(dim=tuple(range(1, kl_terms.ndim))) # (batch_size, 4, 64, 64) -> (batch_size,)
+    
     if prev_sample is None:
         variance_noise = randn_tensor(
             model_output.shape,
@@ -189,4 +221,4 @@ def ddim_step_with_logprob(
     # mean along all but batch dimension
     log_prob = log_prob.mean(dim=tuple(range(1, log_prob.ndim)))
 
-    return prev_sample.type(sample.dtype), log_prob
+    return prev_sample.type(sample.dtype), log_prob, kl_terms

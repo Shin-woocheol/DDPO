@@ -44,6 +44,34 @@ def incompressibility():
     return config
 
 
+def incompressibility_kl():
+    config = compressibility()
+    config.prompt_fn = "simple_animals"
+    config.reward_fn = "jpeg_incompressibility"
+
+    config.seed = 0
+    config.kl_weight = 1.0
+
+    # sample (=reward query per epoch) : 256
+    # total 60 epcohs : 15360 reward queries
+    config.num_epochs = 60
+    config.sample.batch_size = 8
+    config.sample.num_batches_per_epoch = 4
+
+    # batch_size = 64
+    # gradient update per epoch = 4
+    # gpu 개수 및 상황에 따라 맞춰줄 것 : batch_size * gradient_accumulation_steps * num_gpus = 64가 되도록
+    config.train.batch_size = 4
+    config.train.gradient_accumulation_steps = 2
+
+    # evaluation
+    config.use_eval_prompts = True
+    config.eval_prompt_fn = "eval_simple_animals"
+    config.save_img_freq = 30
+
+    return config
+
+
 def aesthetic():
     config = compressibility()
     config.num_epochs = 500
@@ -63,6 +91,31 @@ def aesthetic():
         "buffer_size": 32,
         "min_count": 16,
     }
+    return config
+
+def aesthetic_kl():
+    config = compressibility()
+    config.num_epochs = 500
+    config.reward_fn = "aesthetic_score"
+    config.kl_weight = 1.0
+
+    # this reward is a bit harder to optimize, so I used 2 gradient updates per epoch.
+    config.sample.batch_size = 16
+    config.sample.num_batches_per_epoch = 4
+    
+    config.train.batch_size = 2
+    config.train.gradient_accumulation_steps = 8
+
+    #* seed 0, 1, 2로 실험
+    config.seed = 0
+
+    config.prompt_fn = "simple_animals"
+    config.per_prompt_stat_tracking = {
+        "buffer_size": 32,
+        "min_count": 16,
+    }
+
+    config.save_img_freq = 40
     return config
 
 def aesthetic_debug():
@@ -120,13 +173,53 @@ def hps():
     # for this experiment, I reserved 2 GPUs for LLaVA inference so only 6 could be used for DDPO. the total number of
     # samples per epoch is 8 * 6 * 6 = 288.
     #* batch size는 같게 해주고, num batches를 gradient accumualtion의 배수로 늘려주면 됨. 
-    config.sample.batch_size = 4
-    config.sample.num_batches_per_epoch = 32
+    config.sample.batch_size = 16
+    config.sample.num_batches_per_epoch = 4
 
     # again, this one is harder to optimize, so I used (8 * 6) / (4 * 6) = 2 gradient updates per epoch.
     # 만약 GPU 2개 사용한다면, 
-    config.train.batch_size = 4
-    config.train.gradient_accumulation_steps = 32
+    config.train.batch_size = 2
+    config.train.gradient_accumulation_steps = 64
+
+    # ###
+    # config.train.learning_rate = 1e-3
+    # ####
+
+    config.lora_rank = 32
+
+    # prompting
+    config.prompt_fn = "hps_v2_all"
+    config.eval_prompt_fn = "hps_v2_all_eval"
+    # rewards
+    config.reward_fn = "hps"
+
+    config.seed = 0
+    config.use_eval_prompts = True
+
+    config.save_img_freq = 50
+
+    config.per_prompt_stat_tracking = {
+        "buffer_size": 32,
+        "min_count": 16,
+    }
+
+    return config
+
+
+def hps_debug():
+    config = compressibility()
+
+    config.num_epochs = 500
+    # for this experiment, I reserved 2 GPUs for LLaVA inference so only 6 could be used for DDPO. the total number of
+    # samples per epoch is 8 * 6 * 6 = 288.
+    #* batch size는 같게 해주고, num batches를 gradient accumualtion의 배수로 늘려주면 됨. 
+    config.sample.batch_size = 8
+    config.sample.num_batches_per_epoch = 10
+
+    # again, this one is harder to optimize, so I used (8 * 6) / (4 * 6) = 2 gradient updates per epoch.
+    # 만약 GPU 2개 사용한다면, 
+    config.train.batch_size = 8
+    config.train.gradient_accumulation_steps = 10
 
     config.lora_rank = 32
 

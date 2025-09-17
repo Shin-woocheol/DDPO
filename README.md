@@ -46,7 +46,8 @@ The image at the top of this README was generated using LoRA! However, I did use
 
 You can find the exact configs I used for the 4 experiments in `config/dgx.py`. For example, to run the aesthetic quality experiment:
 ```bash
-CUDA_VISIBLE_DEVICES=2 accelerate launch --main_process_port 29511 scripts/train.py --config config/dgx.py:aesthetic_debug
+CUDA_VISIBLE_DEVICES=2,3 accelerate launch --main_process_port 29511 scripts/train.py --config config/dgx.py:aesthetic_debug
+CUDA_VISIBLE_DEVICES=2,3 accelerate launch --main_process_port 29511 scripts/train.py --config config/dgx.py:hps
 
 ```
 
