@@ -657,7 +657,7 @@ def main(_):
                                         ).input_ids.to(accelerator.device)
                                         batch_prompt_embeds = pipeline.text_encoder(batch_prompt_ids)[0]
                                         eval_neg_prompt_embeds = neg_prompt_embed.repeat(
-                                            config.sample.batch_size, 1, 1
+                                            len(batch_prompts), 1, 1
                                         )
                                         # eval_neg_prompt_embeds = train_neg_prompt_embeds[:len(batch_prompts)]
                                         with autocast():
