@@ -183,26 +183,10 @@ def ddim_step_with_logprob_kl(
             "Cannot pass both generator and prev_sample. Please make sure that either `generator` or"
             " `prev_sample` stays `None`."
         )
+    # compute KL terms regardless of prev_sample sampling
+    kl_terms = (prev_sample_mean - ref_prev_sample_mean) ** 2 / (2 * (std_dev_t**2))
+    kl_terms = kl_terms.mean(dim=tuple(range(1, kl_terms.ndim)))  # (batch_size,)
 
-    if eta > 0:
-        if variance_noise is not None and generator is not None:
-                raise ValueError(
-                    "Cannot pass both generator and variance_noise. Please make sure that either `generator` or"
-                    " `variance_noise` stays `None`."
-                )
-
-        if variance_noise is None:
-            variance_noise = randn_tensor(
-                model_output.shape, generator=generator, device=model_output.device, dtype=model_output.dtype
-            )
-        variance = std_dev_t * variance_noise
-        
-        prev_sample = prev_sample_mean + variance # (batch_size, 4, 64, 64)
-
-        kl_terms = (prev_sample_mean - ref_prev_sample_mean)**2 / (2 * (std_dev_t**2))
-        # mean along all but batch dimension
-        kl_terms = kl_terms.mean(dim=tuple(range(1, kl_terms.ndim))) # (batch_size, 4, 64, 64) -> (batch_size,)
-    
     if prev_sample is None:
         variance_noise = randn_tensor(
             model_output.shape,

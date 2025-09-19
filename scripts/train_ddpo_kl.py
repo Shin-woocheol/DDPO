@@ -602,9 +602,10 @@ def main(_):
                             -config.train.adv_clip_max,
                             config.train.adv_clip_max,
                         )
-                        
+
+                        kl_terms_for_adv = kl_terms.detach()
                         # add kl loss to advantages
-                        advantages = advantages - config.kl_weight * kl_terms
+                        advantages = advantages - config.kl_weight * kl_terms_for_adv
 
                         #print(f"log_prob: {log_prob.shape}, sample['log_probs'][:, j]: {sample['log_probs'][:, j].shape}")
                         ratio = torch.exp(log_prob - sample["log_probs"][:, j]) #* current / previous
@@ -673,14 +674,14 @@ def main(_):
                                 if torch.cuda.is_available():
                                     torch.cuda.manual_seed_all(config.seed + accelerator.process_index)
 
-                                for i in range(num_repeats):
+                                for n in range(num_repeats):
                                     # seed = config.seed + accelerator.process_index + i * accelerator.num_processes
                                     # print(f"[Rank: {accelerator.process_index}, Seed: {seed}]")
                                     # torch.manual_seed(seed)
                                     # if torch.cuda.is_available():
                                     #     torch.cuda.manual_seed_all(seed)
                                     # eval_prompts_all = eval_prompts_all[:3]
-                                    for n in tqdm(range(0, len(eval_prompts_all), config.train.batch_size)):
+                                    for i in tqdm(range(0, len(eval_prompts_all), config.train.batch_size)):
                                         num = accelerator.process_index * num_repeats + n
                                         batch_prompts = eval_prompts_all[i:i + config.train.batch_size]
                                         batch_prompts_metadata = {}
