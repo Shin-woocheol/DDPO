@@ -645,9 +645,9 @@ def main(_):
                                     # if torch.cuda.is_available():
                                     #     torch.cuda.manual_seed_all(seed)
                                     # eval_prompts_all = eval_prompts_all[:3]
-                                    for i in tqdm(range(0, len(eval_prompts_all), config.train.batch_size)):
+                                    for i in tqdm(range(0, len(eval_prompts_all), config.sample.batch_size)):
                                         num = accelerator.process_index * num_repeats + n
-                                        batch_prompts = eval_prompts_all[i:i + config.train.batch_size]
+                                        batch_prompts = eval_prompts_all[i:i + config.sample.batch_size]
                                         batch_prompts_metadata = {}
                                         batch_prompt_ids = pipeline.tokenizer(
                                             batch_prompts,
@@ -656,10 +656,10 @@ def main(_):
                                             truncation=True,
                                         ).input_ids.to(accelerator.device)
                                         batch_prompt_embeds = pipeline.text_encoder(batch_prompt_ids)[0]
-                                        # sample_neg_prompt_embeds = neg_prompt_embed.repeat(
-                                        #     config.train.batch_size, 1, 1
-                                        # )
-                                        eval_neg_prompt_embeds = train_neg_prompt_embeds[:len(batch_prompts)]
+                                        eval_neg_prompt_embeds = neg_prompt_embed.repeat(
+                                            config.sample.batch_size, 1, 1
+                                        )
+                                        # eval_neg_prompt_embeds = train_neg_prompt_embeds[:len(batch_prompts)]
                                         with autocast():
                                             images, _, latents, log_probs = pipeline_with_logprob(
                                                 pipeline,
