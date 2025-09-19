@@ -12,8 +12,8 @@ Requires Python 3.10 or newer.
 # cd ddpo-pytorch
 # pip install -e . # setup.py 안의 package안의 폴더를 현재 .py파일의 위치 상관없이 from import 할 수 있게 해줌.
 
-conda create -n sqdf python=3.10
-conda activate sqdf
+conda create -n DDPO python=3.10
+conda activate DDPO
 pip install -r requirements.txt
 ```
 

@@ -45,4 +45,5 @@ typing-extensions==4.13.2
 urllib3==2.4.0
 wandb==0.19.11
 zipp==3.21.0
+hpsv2x==1.2.0
 -e .

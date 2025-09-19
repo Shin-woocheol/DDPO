@@ -21,10 +21,20 @@
 # 그럼 train.batch_size = 1로 해야하나....?
 # 이 세팅에서 train.batch_size = 2로 하면 31G 메모리 사용
 # 이 세팅에서 train.batch_size = 4로 하면 48G 넘침
+# aesthetic
+CUDA_VISIBLE_DEVICES=4 accelerate launch scripts/train.py --config config/dgx.py:aesthetic \
+    --config.sample.batch_size=8 \
+    --config.sample.num_batches_per_epoch=2 \
+    --config.train.batch_size=1 \
+    --config.train.gradient_accumulation_steps=16 \
+    --config.save_img_freq=40 \
+    --config.seed=0 \
 
-CUDA_VISIBLE_DEVICES=0,1,2,3 accelerate launch scripts/train.py --config config/dgx.py:aesthetic \
-    --config.sample.batch_size=16 \
-    --config.sample.num_batches_per_epoch=4 \
-    --config.train.batch_size=2 \
-    --config.train.gradient_accumulation_steps=32 \
-    --config.save_img_freq=50 \
+
+# CUDA_VISIBLE_DEVICES=4,5,6,7 accelerate launch scripts/train.py --config config/dgx.py:hps \
+#     --config.sample.batch_size=16 \
+#     --config.sample.num_batches_per_epoch=4 \
+#     --config.train.batch_size=2 \
+#     --config.train.gradient_accumulation_steps=32 \
+#     --config.save_img_freq=40 \
+#     --config.seed=0 \
